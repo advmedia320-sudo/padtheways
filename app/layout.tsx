@@ -11,8 +11,9 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Pad The Way',
-  description: 'Pad The Way — support our mission with a donation today.',
+  title: 'v0 App',
+  description: 'Created with v0',
+  generator: 'v0.app',
   icons: {
     icon: [
       {
@@ -29,11 +30,6 @@ export const metadata: Metadata = {
       },
     ],
     apple: '/apple-icon.png',
-  },
-  openGraph: {
-    title: 'Pad The Way',
-    description: 'Pad The Way — support our mission with a donation today.',
-    siteName: 'Pad The Way',
   },
 }
 
@@ -60,3 +56,4 @@ export default function RootLayout({
     </html>
   )
 }
+
