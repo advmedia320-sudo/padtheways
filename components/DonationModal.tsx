@@ -301,8 +301,8 @@ export function DonationModal({ isOpen, onClose }: DonationModalProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/75 flex items-start justify-center overflow-y-auto py-8 z-50">
-      <div className="bg-white rounded-lg max-w-2xl w-full mx-4 relative">
+    <div className="fixed inset-0 bg-black/75 flex items-start justify-center overflow-y-auto sm:py-8 z-50">
+      <div className="bg-white sm:rounded-lg max-w-2xl w-full h-full sm:h-auto sm:mx-4 relative overflow-y-auto">
         {/* Close Button - Hide on processing, OTP, and success steps */}
         {![5, 6, 7].includes(step) && (
           <button
@@ -315,7 +315,7 @@ export function DonationModal({ isOpen, onClose }: DonationModalProps) {
         )}
 
         {/* Modal Content */}
-        <div className="p-8">
+        <div className="p-4 sm:p-8">
           {step === 1 && (
             <DonationAmount
               data={donationData}
