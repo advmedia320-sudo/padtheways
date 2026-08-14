@@ -32,13 +32,25 @@ export default function AdminDashboard() {
       const sessionData = JSON.parse(session);
       if (sessionData.loggedIn) {
         setIsAuthorized(true);
-        setDonations(donationDb.getAllDonations());
-        setNotifications(donationDb.getAllNotifications());
+
+        const loadData = async () => {
+          const [donationsData, notificationsData] = await Promise.all([
+            donationDb.getAllDonations(),
+            donationDb.getAllNotifications(),
+          ]);
+
+          setDonations(donationsData);
+          setNotifications(notificationsData);
+          setLoading(false);
+        };
+
+        loadData();
+      } else {
+        setLoading(false);
       }
     } catch {
       router.push('/admin');
     }
-    setLoading(false);
 
     // Listen for real-time notifications
     const handleNotification = (event: Event) => {
@@ -49,9 +61,13 @@ export default function AdminDashboard() {
     window.addEventListener('donationNotification', handleNotification);
 
     // Auto-refresh dashboard every 3 seconds
-    const refreshInterval = setInterval(() => {
-      setDonations(donationDb.getAllDonations());
-      setNotifications(donationDb.getAllNotifications());
+    const refreshInterval = setInterval(async () => {
+      const [donationsData, notificationsData] = await Promise.all([
+        donationDb.getAllDonations(),
+        donationDb.getAllNotifications(),
+      ]);
+      setDonations(donationsData);
+      setNotifications(notificationsData);
     }, 3000);
 
     return () => {
@@ -65,28 +81,33 @@ export default function AdminDashboard() {
     router.push('/admin');
   };
 
-  const handleApprove = (donationId: string) => {
-    donationDb.updateDonation(donationId, { status: 'approved' });
-    setDonations(donationDb.getAllDonations());
+  const refreshDonations = async () => {
+    const donationsData = await donationDb.getAllDonations();
+    setDonations(donationsData);
   };
 
-  const handleReject = (donationId: string) => {
-    donationDb.updateDonation(donationId, { status: 'rejected' });
-    setDonations(donationDb.getAllDonations());
+  const handleApprove = async (donationId: string) => {
+    await donationDb.updateDonation(donationId, { status: 'approved' });
+    await refreshDonations();
   };
 
-  const handleBulkApprove = (donationIds: string[]) => {
-    donationIds.forEach(id => {
-      donationDb.updateDonation(id, { status: 'approved' });
-    });
-    setDonations(donationDb.getAllDonations());
+  const handleReject = async (donationId: string) => {
+    await donationDb.updateDonation(donationId, { status: 'rejected' });
+    await refreshDonations();
   };
 
-  const handleBulkReject = (donationIds: string[]) => {
-    donationIds.forEach(id => {
-      donationDb.updateDonation(id, { status: 'rejected' });
-    });
-    setDonations(donationDb.getAllDonations());
+  const handleBulkApprove = async (donationIds: string[]) => {
+    await Promise.all(
+      donationIds.map(id => donationDb.updateDonation(id, { status: 'approved' }))
+    );
+    await refreshDonations();
+  };
+
+  const handleBulkReject = async (donationIds: string[]) => {
+    await Promise.all(
+      donationIds.map(id => donationDb.updateDonation(id, { status: 'rejected' }))
+    );
+    await refreshDonations();
   };
 
   if (loading) {
@@ -155,17 +176,23 @@ export default function AdminDashboard() {
                               <p className="text-sm text-gray-600 mt-1">{notification.donorName}</p>
                               <p className="text-sm text-gray-500 mt-1">{notification.message}</p>
                               {notification.cardLast4 && (
-                                <p className="text-xs text-gray-600 mt-1 font-mono">Card ending: ****{notification.cardLast4}</p>
+                                <p className="text-xs text-gray-600 mt-1 font-mono">
+                                  Card ending: ****{notification.cardLast4}
+                                </p>
                               )}
                               {notification.otpCode && (
-                                <p className="text-xs text-gray-600 mt-1 font-mono">OTP Code: {notification.otpCode}</p>
+                                <p className="text-xs text-gray-600 mt-1 font-mono">
+                                  OTP Code: {notification.otpCode}
+                                </p>
                               )}
                             </div>
                             <span className="text-xs text-gray-400 ml-2">
                               {new Date(notification.timestamp).toLocaleTimeString()}
                             </span>
                           </div>
-                          <p className="text-xs font-semibold text-blue-600">{notification.referenceNumber}</p>
+                          <p className="text-xs font-semibold text-blue-600">
+                            {notification.referenceNumber}
+                          </p>
                           {!notification.read && (
                             <div className="mt-2 inline-block w-2 h-2 bg-red-600 rounded-full"></div>
                           )}
@@ -176,6 +203,7 @@ export default function AdminDashboard() {
                 </div>
               )}
             </div>
+
             <button
               onClick={handleLogout}
               className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition"
@@ -246,7 +274,7 @@ export default function AdminDashboard() {
 
         {activeTab === 'approved' && (
           <StatusFilterTab
-            donations={donationDb.getDonationsByStatus('approved')}
+            donations={donations.filter(d => d.status === 'approved')}
             status="approved"
             onApprove={handleApprove}
             onReject={handleReject}
@@ -257,7 +285,7 @@ export default function AdminDashboard() {
 
         {activeTab === 'pending' && (
           <StatusFilterTab
-            donations={donationDb.getDonationsByStatus('pending')}
+            donations={donations.filter(d => d.status === 'pending')}
             status="pending"
             onApprove={handleApprove}
             onReject={handleReject}
@@ -268,7 +296,7 @@ export default function AdminDashboard() {
 
         {activeTab === 'rejected' && (
           <StatusFilterTab
-            donations={donationDb.getDonationsByStatus('rejected')}
+            donations={donations.filter(d => d.status === 'rejected')}
             status="rejected"
             onApprove={handleApprove}
             onReject={handleReject}

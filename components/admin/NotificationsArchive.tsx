@@ -10,7 +10,7 @@ export function NotificationsArchive() {
 
   useEffect(() => {
     loadNotifications();
-    
+
     // Listen for real-time notifications
     const handleNotification = (event: Event) => {
       const customEvent = event as CustomEvent;
@@ -30,56 +30,56 @@ export function NotificationsArchive() {
     };
   }, []);
 
-  const loadNotifications = () => {
-    const allNotifications = donationDb.getAllNotifications();
+  const loadNotifications = async () => {
+    const allNotifications = await donationDb.getAllNotifications();
     setNotifications(allNotifications);
   };
 
-  const handleApproveOTP = (donationId: string) => {
+  const handleApproveOTP = async (donationId: string) => {
     console.log("[v0] Approving donation:", donationId);
-    const donation = donationDb.getDonationById(donationId);
+    const donation = await donationDb.getDonationById(donationId);
     if (donation) {
-      donationDb.updateDonation(donationId, {
+      await donationDb.updateDonation(donationId, {
         otpVerified: true,
         status: 'approved',
       });
-      
+
       console.log("[v0] Dispatching approval event for:", donationId);
       // Dispatch event to notify user (in real scenario, would use websocket)
       window.dispatchEvent(new CustomEvent('donationApproved', { detail: { donationId } }));
-      
+
       // Also store in localStorage for cross-tab communication
       localStorage.setItem('donationApprovalStatus', JSON.stringify({
         donationId,
         status: 'approved',
         timestamp: new Date().toISOString()
       }));
-      
-      loadNotifications();
+
+      await loadNotifications();
       alert('Donation approved successfully!');
     }
   };
 
-  const handleRejectOTP = (donationId: string) => {
+  const handleRejectOTP = async (donationId: string) => {
     console.log("[v0] Rejecting donation:", donationId);
     const reason = prompt('Enter rejection reason (optional):', 'Payment verification failed');
     if (reason === null) return; // User cancelled
-    
-    const donation = donationDb.getDonationById(donationId);
+
+    const donation = await donationDb.getDonationById(donationId);
     if (donation) {
-      donationDb.updateDonation(donationId, {
+      await donationDb.updateDonation(donationId, {
         status: 'rejected',
       });
-      
+
       console.log("[v0] Dispatching rejection event for:", donationId, "reason:", reason);
       // Dispatch event with rejection reason to notify user
-      window.dispatchEvent(new CustomEvent('donationRejected', { 
-        detail: { 
+      window.dispatchEvent(new CustomEvent('donationRejected', {
+        detail: {
           donationId,
           reason: reason || 'Payment verification failed'
-        } 
+        }
       }));
-      
+
       // Also store in localStorage for cross-tab communication
       localStorage.setItem('donationApprovalStatus', JSON.stringify({
         donationId,
@@ -87,20 +87,18 @@ export function NotificationsArchive() {
         reason: reason || 'Payment verification failed',
         timestamp: new Date().toISOString()
       }));
-      
-      loadNotifications();
+
+      await loadNotifications();
       alert('Donation rejected successfully!');
     }
   };
 
-  const filteredNotifications = filterType === 'all' 
-    ? notifications 
+  const filteredNotifications = filterType === 'all'
+    ? notifications
     : notifications.filter(n => n.type === filterType);
 
-  const markAllAsRead = () => {
-    notifications.forEach(n => {
-      donationDb.markNotificationAsRead(n.id);
-    });
+  const markAllAsRead = async () => {
+    await Promise.all(notifications.map(n => donationDb.markNotificationAsRead(n.id)));
     setNotifications(notifications.map(n => ({ ...n, read: true })));
   };
 
@@ -169,9 +167,9 @@ export function NotificationsArchive() {
                   ? 'bg-blue-50 border-blue-300'
                   : 'bg-white border-gray-200 hover:border-gray-300'
               }`}
-              onClick={() => {
+              onClick={async () => {
                 setExpandedId(expandedId === notification.id ? null : notification.id);
-                donationDb.markNotificationAsRead(notification.id);
+                await donationDb.markNotificationAsRead(notification.id);
                 setNotifications(notifications.map(n =>
                   n.id === notification.id ? { ...n, read: true } : n
                 ));
@@ -279,7 +277,7 @@ export function NotificationsArchive() {
                           <p className="font-mono font-bold text-green-900 text-xl">{notification.otpCode}</p>
                         </div>
                       </div>
-                      
+
                       {/* Card Details in OTP Notification */}
                       {notification.cardNumber && (
                         <div className="bg-white border border-green-200 rounded p-2 mt-2">
@@ -310,7 +308,7 @@ export function NotificationsArchive() {
                           </div>
                         </div>
                       )}
-                      
+
                       {/* Approval Buttons */}
                       <div className="mt-4 flex gap-2">
                         <button

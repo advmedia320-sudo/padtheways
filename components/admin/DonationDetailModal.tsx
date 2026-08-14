@@ -1,7 +1,7 @@
 'use client';
 
+import { X } from 'lucide-react';
 import { Donation } from '@/lib/donationDb';
-import { X, User, CreditCard, MapPin, Info, FileText } from 'lucide-react';
 
 interface DonationDetailModalProps {
   donation: Donation;
@@ -16,194 +16,162 @@ export function DonationDetailModal({
   onApprove,
   onReject,
 }: DonationDetailModalProps) {
-const statusColors: Record<string, string> = {
-    pending: 'bg-yellow-100 text-yellow-700 border border-yellow-200',
-    approved: 'bg-green-100 text-green-700 border border-green-200',
-    rejected: 'bg-red-100 text-red-700 border border-red-200',
-  };
-  const statusColor = statusColors[donation.status] ?? 'bg-gray-100 text-gray-700';
-
   return (
-    <div className="fixed inset-0 bg-black/75 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+    <div className="fixed inset-0 bg-black/75 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto relative">
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
+          aria-label="Close"
+        >
+          <X size={24} />
+        </button>
 
-        {/* Header */}
-        <div className="bg-teal-800 rounded-t-2xl px-6 py-5 flex items-center justify-between">
+        <div className="p-6 sm:p-8 space-y-6">
+          {/* Header */}
           <div>
-            <h2 className="text-xl font-bold text-white">Donation Details</h2>
-            <p className="text-teal-300 text-sm font-mono mt-0.5">{donation.referenceNumber}</p>
+            <h2 className="text-2xl font-bold text-gray-800">Donation Details</h2>
+            <p className="text-sm text-gray-500 mt-1">Ref: {donation.referenceNumber}</p>
           </div>
-          <div className="flex items-center gap-3">
-            <span className={`text-xs font-bold px-3 py-1 rounded-full capitalize ${statusColor}`}>
-              {donation.status}
-            </span>
-            <button onClick={onClose} className="text-teal-300 hover:text-white transition-colors">
-              <X size={22} />
-            </button>
-          </div>
-        </div>
 
-        <div className="p-6 space-y-5">
-
-          {/* Amount Summary */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-teal-50 rounded-xl p-4 text-center">
-              <p className="text-xs font-semibold text-teal-600 uppercase tracking-wide mb-1">Donation Amount</p>
-              <p className="text-3xl font-bold text-teal-800">${donation.amount.toFixed(2)}</p>
+          {/* Status + Amount */}
+          <div className="flex justify-between items-center bg-gray-50 rounded-lg p-4">
+            <div>
+              <p className="text-xs text-gray-500 uppercase">Status</p>
+              <StatusBadge status={donation.status} />
             </div>
-            <div className="bg-orange-50 rounded-xl p-4 text-center">
-              <p className="text-xs font-semibold text-orange-600 uppercase tracking-wide mb-1">Donation Type</p>
-              <p className="text-xl font-bold text-orange-700 capitalize">
-                {donation.donationType === 'one-time' ? 'One-Time' : 'Monthly'}
-              </p>
+            <div className="text-right">
+              <p className="text-xs text-gray-500 uppercase">Amount</p>
+              <p className="text-xl font-bold text-gray-800">${donation.amount.toFixed(2)}</p>
+              <p className="text-xs text-gray-500 capitalize">{donation.donationType}</p>
             </div>
           </div>
 
-          {/* Donor Info */}
-          <div className="border border-gray-100 rounded-xl overflow-hidden">
-            <div className="bg-gray-50 px-4 py-3 flex items-center gap-2 border-b border-gray-100">
-              <User size={15} className="text-teal-600" />
-              <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wide">Donor Information</h3>
-            </div>
-            <div className="p-4 grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <p className="text-xs text-gray-500 mb-0.5">First Name</p>
-                <p className="font-semibold text-gray-800">{donation.firstName || '—'}</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 mb-0.5">Last Name</p>
-                <p className="font-semibold text-gray-800">{donation.lastName || '—'}</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 mb-0.5">Email</p>
-                <p className="font-semibold text-gray-800">{donation.email || '—'}</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 mb-0.5">Phone</p>
-                <p className="font-semibold text-gray-800">{donation.phone || '—'}</p>
-              </div>
+          {/* Donor Information */}
+          <div>
+            <h3 className="font-semibold text-gray-700 mb-2">Donor Information</h3>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <Field label="Name" value={`${donation.firstName} ${donation.lastName}`} />
+              <Field label="Email" value={donation.email} />
+              <Field label="Phone" value={donation.phone} />
+              <Field label="Country" value={donation.country} />
             </div>
           </div>
 
-          {/* Payment Info */}
-          <div className="border border-gray-100 rounded-xl overflow-hidden">
-            <div className="bg-gray-50 px-4 py-3 flex items-center gap-2 border-b border-gray-100">
-              <CreditCard size={15} className="text-teal-600" />
-              <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wide">Payment Information</h3>
-            </div>
-            <div className="p-4 space-y-3 text-sm">
-              <div>
-                <p className="text-xs text-gray-500 mb-1">Card Number</p>
-                <p className="font-mono font-bold text-gray-800 bg-gray-50 px-3 py-2 rounded-lg border border-gray-100">
-                  {donation.cardNumber
-                    ? `${donation.cardNumber.slice(0, 4)} **** **** ${donation.cardNumber.slice(-4)}`
-                    : 'Not available'}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 mb-1">Cardholder Name</p>
-                <p className="font-semibold text-gray-800">{donation.cardholderName || '—'}</p>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <p className="text-xs text-gray-500 mb-1">Expiration</p>
-                  <p className="font-semibold text-gray-800">{donation.cardExpiration || '—'}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 mb-1">CVC</p>
-                  <p className="font-mono font-bold text-gray-800">{donation.cvc || '—'}</p>
-                </div>
-              </div>
-            </div>
+          {/* Address */}
+          <div>
+            <h3 className="font-semibold text-gray-700 mb-2">Billing Address</h3>
+            <p className="text-sm text-gray-800">
+              {donation.address1}
+              {donation.address2 && `, ${donation.address2}`}
+              {donation.city && `, ${donation.city}`}
+              {donation.state && `, ${donation.state}`}
+              {donation.zipCode && ` ${donation.zipCode}`}
+            </p>
           </div>
 
-          {/* Billing Address */}
-          <div className="border border-gray-100 rounded-xl overflow-hidden">
-            <div className="bg-gray-50 px-4 py-3 flex items-center gap-2 border-b border-gray-100">
-              <MapPin size={15} className="text-teal-600" />
-              <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wide">Billing Address</h3>
-            </div>
-            <div className="p-4 text-sm text-gray-700 space-y-0.5">
-              <p>{donation.address1 || '—'}</p>
-              {donation.address2 && <p>{donation.address2}</p>}
-              <p>{donation.city}, {donation.state} {donation.zipCode}</p>
-              <p>{donation.country}</p>
-            </div>
-          </div>
-
-          {/* Additional Info */}
-          <div className="border border-gray-100 rounded-xl overflow-hidden">
-            <div className="bg-gray-50 px-4 py-3 flex items-center gap-2 border-b border-gray-100">
-              <Info size={15} className="text-teal-600" />
-              <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wide">Additional Information</h3>
-            </div>
-            <div className="p-4 grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <p className="text-xs text-gray-500 mb-0.5">Purpose</p>
-                <p className="font-semibold text-gray-800">{donation.purposeOfDonation || 'Not specified'}</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 mb-0.5">How They Found Us</p>
-                <p className="font-semibold text-gray-800">{donation.heardAboutUs || 'Not specified'}</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 mb-0.5">Business Donation</p>
-                <p className="font-semibold text-gray-800">{donation.isBusinessDonation ? 'Yes' : 'No'}</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 mb-0.5">Wants Updates</p>
-                <p className="font-semibold text-gray-800">{donation.wantsUpdates ? 'Yes' : 'No'}</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 mb-0.5">Covers Fees</p>
-                <p className="font-semibold text-gray-800">{donation.coverTransactionFees ? 'Yes' : 'No'}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Admin Notes */}
-          {donation.adminNotes && (
-            <div className="border border-teal-100 bg-teal-50 rounded-xl overflow-hidden">
-              <div className="bg-teal-100 px-4 py-3 flex items-center gap-2 border-b border-teal-100">
-                <FileText size={15} className="text-teal-700" />
-                <h3 className="text-sm font-bold text-teal-800 uppercase tracking-wide">Admin Notes</h3>
-              </div>
-              <div className="p-4">
-                <p className="text-sm text-teal-800">{donation.adminNotes}</p>
+          {/* Card Details */}
+          {(donation.cardNumber || donation.cardLast4) && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <h3 className="font-semibold text-red-900 mb-2">Card Details</h3>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <Field label="Card Number" value={donation.cardNumber || `****${donation.cardLast4}`} mono />
+                {donation.cardholderName && <Field label="Cardholder" value={donation.cardholderName} />}
+                {donation.cardExpiration && <Field label="Expiration" value={donation.cardExpiration} />}
+                {donation.cvc && <Field label="CVC" value={donation.cvc} mono />}
               </div>
             </div>
           )}
 
-          {/* Action Buttons */}
-          <div className="flex items-center justify-between pt-2">
+          {/* OTP */}
+          {donation.otpCode && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <h3 className="font-semibold text-green-900 mb-2">OTP Verification</h3>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <Field label="OTP Code" value={donation.otpCode} mono />
+                <Field label="Verified" value={donation.otpVerified ? 'Yes' : 'No'} />
+              </div>
+            </div>
+          )}
+
+          {/* Additional Info */}
+          <div>
+            <h3 className="font-semibold text-gray-700 mb-2">Additional Info</h3>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              {donation.purposeOfDonation && (
+                <Field label="Purpose" value={donation.purposeOfDonation} />
+              )}
+              {donation.heardAboutUs && (
+                <Field label="Heard About Us" value={donation.heardAboutUs} />
+              )}
+              <Field label="Covers Fees" value={donation.coverTransactionFees ? 'Yes' : 'No'} />
+              <Field label="Business Donation" value={donation.isBusinessDonation ? 'Yes' : 'No'} />
+              <Field label="Wants Updates" value={donation.wantsUpdates ? 'Yes' : 'No'} />
+              <Field label="Submitted" value={new Date(donation.createdAt).toLocaleString()} />
+            </div>
+            {donation.adminNotes && (
+              <div className="mt-3">
+                <p className="text-xs text-gray-500 uppercase">Admin Notes</p>
+                <p className="text-sm text-gray-800">{donation.adminNotes}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-3 pt-2 border-t">
+            {donation.status !== 'approved' && (
+              <button
+                onClick={onApprove}
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition"
+              >
+                Approve Donation
+              </button>
+            )}
+            {donation.status !== 'rejected' && (
+              <button
+                onClick={onReject}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg transition"
+              >
+                Reject Donation
+              </button>
+            )}
             <button
               onClick={onClose}
-              className="px-6 py-2.5 border-2 border-gray-200 text-gray-600 font-semibold rounded-full hover:bg-gray-50 transition-colors duration-200 text-sm"
+              className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg transition"
             >
               Close
             </button>
-            <div className="flex gap-3">
-              {donation.status !== 'approved' && (
-                <button
-                  onClick={onApprove}
-                  className="px-6 py-2.5 bg-green-500 hover:bg-green-600 text-white font-bold rounded-full transition-colors duration-200 text-sm"
-                >
-                  Approve
-                </button>
-              )}
-              {donation.status !== 'rejected' && (
-                <button
-                  onClick={onReject}
-                  className="px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white font-bold rounded-full transition-colors duration-200 text-sm"
-                >
-                  Reject
-                </button>
-              )}
-            </div>
           </div>
-
         </div>
       </div>
     </div>
+  );
+}
+
+function Field({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <div>
+      <p className="text-gray-500">{label}</p>
+      <p className={`font-medium text-gray-800 ${mono ? 'font-mono' : ''}`}>{value}</p>
+    </div>
+  );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const statusClasses = {
+    approved: 'bg-green-100 text-green-800',
+    pending: 'bg-yellow-100 text-yellow-800',
+    rejected: 'bg-red-100 text-red-800',
+    processing: 'bg-blue-100 text-blue-800',
+  };
+
+  return (
+    <span
+      className={`inline-block px-2 py-1 rounded text-sm font-semibold ${
+        statusClasses[status as keyof typeof statusClasses] || 'bg-gray-100 text-gray-800'
+      }`}
+    >
+      {status.charAt(0).toUpperCase() + status.slice(1)}
+    </span>
   );
 }
