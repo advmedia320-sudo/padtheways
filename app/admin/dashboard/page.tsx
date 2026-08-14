@@ -17,40 +17,24 @@ export default function AdminDashboard() {
   const [donations, setDonations] = useState<Donation[]>([]);
   const [notifications, setNotifications] = useState<AdminNotification[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [isAuthorized, setIsAuthorized] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  // Auth is now enforced server-side by middleware (signed httpOnly cookie).
+  // If we've reached this page at all, the middleware already verified the
+  // session — no client-side sessionStorage check needed anymore.
   useEffect(() => {
-    // Check authorization
-    const session = sessionStorage.getItem('adminSession');
-    if (!session) {
-      router.push('/admin');
-      return;
-    }
+    const loadData = async () => {
+      const [donationsData, notificationsData] = await Promise.all([
+        donationDb.getAllDonations(),
+        donationDb.getAllNotifications(),
+      ]);
 
-    try {
-      const sessionData = JSON.parse(session);
-      if (sessionData.loggedIn) {
-        setIsAuthorized(true);
+      setDonations(donationsData);
+      setNotifications(notificationsData);
+      setLoading(false);
+    };
 
-        const loadData = async () => {
-          const [donationsData, notificationsData] = await Promise.all([
-            donationDb.getAllDonations(),
-            donationDb.getAllNotifications(),
-          ]);
-
-          setDonations(donationsData);
-          setNotifications(notificationsData);
-          setLoading(false);
-        };
-
-        loadData();
-      } else {
-        setLoading(false);
-      }
-    } catch {
-      router.push('/admin');
-    }
+    loadData();
 
     // Listen for real-time notifications
     const handleNotification = (event: Event) => {
@@ -76,8 +60,8 @@ export default function AdminDashboard() {
     };
   }, [router]);
 
-  const handleLogout = () => {
-    sessionStorage.removeItem('adminSession');
+  const handleLogout = async () => {
+    await fetch('/api/admin/logout', { method: 'POST' });
     router.push('/admin');
   };
 
@@ -119,10 +103,6 @@ export default function AdminDashboard() {
         </div>
       </div>
     );
-  }
-
-  if (!isAuthorized) {
-    return null;
   }
 
   const unreadCount = notifications.filter(n => !n.read).length;
