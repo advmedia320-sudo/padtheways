@@ -223,7 +223,7 @@ export function PaymentInfo({ data, onUpdate, onNext, onBack }: Props) {
 
   const validateForm = () => {
     const newErrors: { [key: string]: string } = {};
-    const cardDigits = data.cardNumber.replace(/\D/g, '');
+    const cardDigits = data.cardNumber.includes('•') ? '' : data.cardNumber.replace(/\D/g, '');
     if (!cardDigits || cardDigits.length < 16) newErrors.cardNumber = 'Card number must be 16 digits';
     if (!data.cvc || data.cvc.length < 3) newErrors.cvc = 'CVC must be at least 3 digits';
     if (!data.cardholderName.trim()) newErrors.cardholderName = 'Cardholder name is required';
@@ -303,6 +303,7 @@ export function PaymentInfo({ data, onUpdate, onNext, onBack }: Props) {
               <input
                 type="text"
                 value={data.cardNumber}
+                onFocus={() => { if (data.cardNumber.includes('•')) onUpdate({ cardNumber: '' }); }}
                 onChange={(e) => { handleCardNumberChange(e.target.value); setErrors({ ...errors, cardNumber: '' }); }}
                 placeholder="0000 0000 0000 0000"
                 maxLength={19}
