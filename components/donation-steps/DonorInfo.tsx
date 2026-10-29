@@ -24,7 +24,7 @@ export function DonorInfo({ data, onUpdate, onNext, onBack }: Props) {
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
   const isPhoneValid = (phone: string) => {
-    return /^[\d\s\-\+$$$$]+$/.test(phone) && phone.replace(/\D/g, '').length >= 10;
+    return /^[\d\s\-\+\(\)]+$/.test(phone) && phone.replace(/\D/g, '').length >= 10;
   };
 
   const validateForm = () => {

