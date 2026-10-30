@@ -2,14 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Donation, donationDb, AdminNotification } from '@/lib/donationDb';
+import { Donation, donationDb, AdminNotification, DonorFeedback } from '@/lib/donationDb';
+import { FeedbackTab } from '@/components/admin/FeedbackTab';
 import { OverviewTab } from '@/components/admin/OverviewTab';
 import { AllDonationsTab } from '@/components/admin/AllDonationsTab';
 import { StatusFilterTab } from '@/components/admin/StatusFilterTab';
 import { SearchTab } from '@/components/admin/SearchTab';
 import { NotificationsArchive } from '@/components/admin/NotificationsArchive';
 
-type TabType = 'overview' | 'all' | 'approved' | 'pending' | 'rejected' | 'search' | 'notifications';
+type TabType = 'overview' | 'all' | 'approved' | 'pending' | 'rejected' | 'search' | 'notifications' | 'feedback';
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -18,19 +19,22 @@ export default function AdminDashboard() {
   const [notifications, setNotifications] = useState<AdminNotification[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [feedback, setFeedback] = useState<DonorFeedback[]>([]);
 
   // Auth is now enforced server-side by middleware (signed httpOnly cookie).
   // If we've reached this page at all, the middleware already verified the
   // session — no client-side sessionStorage check needed anymore.
   useEffect(() => {
     const loadData = async () => {
-      const [donationsData, notificationsData] = await Promise.all([
+      const [donationsData, notificationsData, feedbackData] = await Promise.all([
         donationDb.getAllDonations(),
         donationDb.getAllNotifications(),
+        donationDb.getAllFeedback(),
       ]);
 
       setDonations(donationsData);
       setNotifications(notificationsData);
+      setFeedback(feedbackData);
       setLoading(false);
     };
 
@@ -46,12 +50,14 @@ export default function AdminDashboard() {
 
     // Auto-refresh dashboard every 3 seconds
     const refreshInterval = setInterval(async () => {
-      const [donationsData, notificationsData] = await Promise.all([
+      const [donationsData, notificationsData, feedbackData] = await Promise.all([
         donationDb.getAllDonations(),
         donationDb.getAllNotifications(),
+        donationDb.getAllFeedback()
       ]);
       setDonations(donationsData);
       setNotifications(notificationsData);
+      setFeedback(feedbackData);
     }, 3000);
 
     return () => {
@@ -234,6 +240,11 @@ export default function AdminDashboard() {
               active={activeTab === 'notifications'}
               onClick={() => setActiveTab('notifications')}
             />
+            <TabButton
+              label={`Donor Feedback ${feedback.length > 0 ? `(${feedback.length})` : '(0)'}`}
+              active={activeTab === 'feedback'}
+              onClick={() => setActiveTab('feedback')}
+            />
           </div>
         </div>
 
@@ -300,6 +311,11 @@ export default function AdminDashboard() {
             <NotificationsArchive />
           </div>
         )}
+        {activeTab === 'feedback' && (
+          <div className="bg-white rounded-lg shadow p-6">
+            <FeedbackTab feedback={feedback} />
+            </div>
+            )}
       </main>
     </div>
   );

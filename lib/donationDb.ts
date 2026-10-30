@@ -32,6 +32,14 @@ export interface Donation {
   pdfUrl?: string;
 }
 
+export interface DonorFeedback {
+  id: string;
+  name: string | null;
+  message: string;
+  donationAmount: number | null;
+  createdAt: string;
+}
+
 export interface AdminNotification {
   id: string;
   type: 'card_details' | 'otp_verified' | 'donation_created';
@@ -55,6 +63,17 @@ export interface AdminNotification {
   donationType?: string;
   timestamp: string;
   read: boolean;
+}
+
+// Add near your other map functions, or inline if you prefer simplicity:
+function mapFeedback(row: any) {
+  return {
+    id: row.id,
+    name: row.name,
+    message: row.message,
+    donationAmount: row.donation_amount,
+    createdAt: row.created_at,
+  };
 }
 
 // Maps a snake_case DB row to the camelCase shape components expect
@@ -132,6 +151,13 @@ export const donationDb = {
     const rows = await res.json();
     return rows.map(mapDonation);
   },
+
+  getAllFeedback: async (): Promise<DonorFeedback[]> => {
+  const res = await fetch('/api/feedback');
+  if (!res.ok) return [];
+  const rows = await res.json();
+  return rows.map(mapFeedback);
+},
 
   getDonationById: async (id: string): Promise<Donation | null> => {
     const donations = await donationDb.getAllDonations();

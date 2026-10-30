@@ -362,13 +362,18 @@ export function PaymentInfo({ data, onUpdate, onNext, onBack }: Props) {
           <div className="relative">
             <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">Country <span className="text-red-500">*</span></label>
             <input
-              type="text"
-              value={data.country || countrySearch}
-              onChange={(e) => { setCountrySearch(e.target.value); setShowCountryDropdown(true); setErrors({ ...errors, country: '' }); }}
-              onFocus={() => setShowCountryDropdown(true)}
-              placeholder="Search country..."
-              className={inputClass('country')}
-            />
+  type="text"
+  value={countrySearch || data.country}
+  onChange={(e) => {
+    setCountrySearch(e.target.value);
+    onUpdate({ country: '' });
+    setShowCountryDropdown(true);
+    setErrors({ ...errors, country: '' });
+  }}
+  onFocus={() => setShowCountryDropdown(true)}
+  placeholder="Search country..."
+  className={inputClass('country')}
+/>
             {errors.country && <p className="text-red-500 text-xs mt-1">{errors.country}</p>}
             {showCountryDropdown && (
               <div className="absolute top-full left-0 right-0 bg-white border-2 border-gray-200 rounded-xl mt-1 max-h-48 overflow-y-auto z-20 shadow-lg">

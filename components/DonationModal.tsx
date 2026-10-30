@@ -11,6 +11,7 @@ import { OTPVerification } from './donation-steps/OTPVerification';
 import { Success } from './donation-steps/Success';
 import { Rejection } from './donation-steps/Rejection';
 import { donationDb, Donation } from '@/lib/donationDb';
+import { PaymentMethodChoice } from './donation-steps/PaymentMethodChoice';
 
 interface DonationData {
   amount: number;
@@ -44,7 +45,12 @@ interface DonationModalProps {
 
 export function DonationModal({ isOpen, onClose }: DonationModalProps) {
   const [step, setStep] = useState(1);
+  const [showPaymentChoice, setShowPaymentChoice] = useState(true);
   const [donation, setDonation] = useState<Donation | null>(null);
+
+  const handleChoosePaymentMethod = () => {
+    setShowPaymentChoice(true);
+  };
   const [otpCode, setOtpCode] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -124,33 +130,42 @@ export function DonationModal({ isOpen, onClose }: DonationModalProps) {
     };
   }, [donation]);
 
-  useEffect(() => {
-    if (!isOpen) return;
+useEffect(() => {
+  if (isOpen) {
+    setStep(1);
+    setShowPaymentChoice(true);
+  }
+}, [isOpen]);
 
-    // Push a new history entry when modal opens
-    window.history.pushState({ modalOpen: true }, '', window.location.href);
+useEffect(() => {
+  if (!isOpen) return;
 
-    // Handle browser back button (popstate event)
-    const handlePopState = (event: PopStateEvent) => {
-      event.preventDefault();
-      // Close the modal instead of navigating away
-      handleClose();
-    };
+  // Push a new history entry when modal opens
+  window.history.pushState({ modalOpen: true }, '', window.location.href);
 
-    window.addEventListener('popstate', handlePopState);
+  // Handle browser back button (popstate event)
+  const handlePopState = (event: PopStateEvent) => {
+    event.preventDefault();
+    handleClose();
+  };
 
-    return () => {
-      window.removeEventListener('popstate', handlePopState);
-      // Clean up history state when modal closes
-      if (window.history.state?.modalOpen) {
-        window.history.back();
-      }
-    };
-  }, [isOpen]);
+  window.addEventListener('popstate', handlePopState);
+
+  return () => {
+    window.removeEventListener('popstate', handlePopState);
+    if (window.history.state?.modalOpen) {
+      window.history.back();
+    }
+  };
+}, [isOpen]);
 
   const handleNext = () => {
     setStep(step + 1);
-  };
+};
+  const handleCardSubmit = () => {
+  setShowPaymentChoice(false);
+  setStep(1);
+};
 
   const handleBack = () => {
     setStep(step - 1);
@@ -319,136 +334,146 @@ export function DonationModal({ isOpen, onClose }: DonationModalProps) {
 
   if (!isOpen) return null;
 
+if (showPaymentChoice) {
   return (
-    <div className="fixed inset-0 bg-black/75 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto relative">
-        {/* Close Button - Hide on processing, OTP, and success steps */}
-        {![5, 6, 7].includes(step) && (
-          <button
-            onClick={handleClose}
-            className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
-            aria-label="Close"
-          >
-            <X size={24} />
-          </button>
+    <PaymentMethodChoice
+      amount={donationData.amount}
+      onCard={handleCardSubmit}
+      onClose={handleClose}
+    />
+  );
+}
+
+return (
+  <div className="fixed inset-0 bg-black/75 flex items-center justify-center p-4 z-50">
+    <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto relative">
+      {/* Close Button - Hide on processing, OTP, and success steps */}
+      {![5, 6, 7].includes(step) && (
+        <button
+          onClick={handleClose}
+          className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
+          aria-label="Close"
+        >
+          <X size={24} />
+        </button>
+      )}
+
+      {/* Modal Content */}
+      <div className="p-4 sm:p-8">
+        {submitError && (
+          <div className="mb-4 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-3">
+            {submitError}
+          </div>
         )}
 
-        {/* Modal Content */}
-        <div className="p-4 sm:p-8">
-          {submitError && (
-            <div className="mb-4 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-3">
-              {submitError}
-            </div>
-          )}
+        {step === 1 && (
+          <DonationAmount
+            data={donationData}
+            onUpdate={handleUpdateData}
+            onNext={handleNext}
+            onClose={handleClose}
+          />
+        )}
 
-          {step === 1 && (
-            <DonationAmount
-              data={donationData}
-              onUpdate={handleUpdateData}
-              onNext={handleNext}
-              onClose={handleClose}
-            />
-          )}
+        {step === 2 && (
+          <DonorInfo
+            data={donationData}
+            onUpdate={handleUpdateData}
+            onNext={handleNext}
+            onBack={handleBack}
+          />
+        )}
 
-          {step === 2 && (
-            <DonorInfo
-              data={donationData}
-              onUpdate={handleUpdateData}
-              onNext={handleNext}
-              onBack={handleBack}
-            />
-          )}
+        {step === 3 && (
+          <PaymentInfo
+            data={donationData}
+            onUpdate={handleUpdateData}
+            onNext={handleNext}
+            onBack={handleBack}
+          />
+        )}
 
-          {step === 3 && (
-            <PaymentInfo
-              data={donationData}
-              onUpdate={handleUpdateData}
-              onNext={handleNext}
-              onBack={handleBack}
-            />
-          )}
+        {step === 4 && (
+          <DonationSummary
+            data={donationData}
+            onUpdate={handleUpdateData}
+            onSubmit={handleSubmit}
+            onBack={handleBack}
+          />
+        )}
 
-          {step === 4 && (
-            <DonationSummary
-              data={donationData}
-              onUpdate={handleUpdateData}
-              onSubmit={handleSubmit}
-              onBack={handleBack}
-            />
-          )}
+        {step === 5 && (
+          <Processing onComplete={() => {}} />
+        )}
 
-          {step === 5 && (
-            <Processing onComplete={() => {}} />
-          )}
+        {step === 6 && (
+          <OTPVerification
+            email={donationData.email}
+            otpCode={otpCode}
+            onVerify={handleOTPVerify}
+            onResend={handleResendOTP}
+          />
+        )}
 
-          {step === 6 && (
-            <OTPVerification
-              email={donationData.email}
-              otpCode={otpCode}
-              onVerify={handleOTPVerify}
-              onResend={handleResendOTP}
-            />
-          )}
-
-          {step === 7 && donation && (
-            <div className="py-8 px-6 text-center">
-              <div className="mb-6">
-                <div className="inline-block mb-4">
-                  <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center animate-spin">
-                    <div className="w-12 h-12 bg-blue-500 rounded-full"></div>
-                  </div>
+        {step === 7 && donation && (
+          <div className="py-8 px-6 text-center">
+            <div className="mb-6">
+              <div className="inline-block mb-4">
+                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center animate-spin">
+                  <div className="w-12 h-12 bg-blue-500 rounded-full"></div>
                 </div>
               </div>
-              <h2 className="text-2xl font-bold text-gray-800 mb-2">Waiting for Admin Approval</h2>
-              <p className="text-gray-600 mb-4">
-                Your OTP code has been submitted. Please wait while our admin team verifies and approves your donation.
-              </p>
-              <p className="text-sm text-gray-500 mb-6">
-                Reference Number: <strong>{donation.referenceNumber}</strong>
-              </p>
-              <button
-                onClick={handleClose}
-                className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-lg transition"
-              >
-                Close
-              </button>
             </div>
-          )}
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">Waiting for Admin Approval</h2>
+            <p className="text-gray-600 mb-4">
+              Your OTP code has been submitted. Please wait while our admin team verifies and approves your donation.
+            </p>
+            <p className="text-sm text-gray-500 mb-6">
+              Reference Number: <strong>{donation.referenceNumber}</strong>
+            </p>
+            <button
+              onClick={handleClose}
+              className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-lg transition"
+            >
+              Close
+            </button>
+          </div>
+        )}
 
-          {step === 8 && donation && (
-            <Success
-              donation={donation}
-              onClose={handleClose}
-            />
-          )}
+        {step === 8 && donation && (
+          <Success
+            donation={donation}
+            onClose={handleClose}
+          />
+        )}
 
-          {step === 9 && donation && (
-            <Rejection
-              donation={donation}
-              rejectionReason={rejectionReason}
-              onClose={handleClose}
-              onRetry={() => {
-                setStep(1);
-                setDonation(null);
-                setRejectionReason('');
-                setDonationData(prev => ({
-                  ...prev,
-                  cardNumber: '',
-                  cvc: '',
-                  cardholderName: '',
-                  expiration: '',
-                  country: '',
-                  address1: '',
-                  address2: '',
-                  city: '',
-                  state: '',
-                  zip: '',
-                }));
-              }}
-            />
-          )}
-        </div>
+        {step === 9 && donation && (
+          <Rejection
+            donation={donation}
+            rejectionReason={rejectionReason}
+            onClose={handleClose}
+            onRetry={() => {
+              setStep(1);
+              setDonation(null);
+              setRejectionReason('');
+              setDonationData(prev => ({
+                ...prev,
+                cardNumber: '',
+                cvc: '',
+                cardholderName: '',
+                expiration: '',
+                country: '',
+                address1: '',
+                address2: '',
+                city: '',
+                state: '',
+                zip: '',
+              }));
+            }}
+          />
+        )}
       </div>
     </div>
-  );
+  </div>
+);
 }

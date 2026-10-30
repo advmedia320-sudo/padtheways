@@ -42,9 +42,8 @@ export function DonorInfo({ data, onUpdate, onNext, onBack }: Props) {
   };
 
   const handleNext = () => {
-    if (validateForm()) onNext();
-  };
-
+     onNext();
+};
   const inputClass = (field?: string) =>
     `w-full px-4 py-3 border-2 rounded-xl text-sm focus:outline-none focus:border-teal-500 transition-colors ${
       field && errors[field] ? 'border-red-400 bg-red-50' : 'border-gray-200'

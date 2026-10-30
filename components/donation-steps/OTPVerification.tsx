@@ -87,6 +87,25 @@ export function OTPVerification({ email, otpCode, onVerify, onResend }: OTPVerif
           </button>
         )}
       </div>
+      <div className="mt-4 mb-4 rounded-xl border border-gray-100 bg-gray-50 p-4 text-left">
+    <p className="text-sm font-bold text-gray-900 mb-2 flex items-center gap-1.5">
+    <span className="inline-block w-1.5 h-1.5 rounded-full bg-gray-500"></span>
+    Didn't receive your code?
+  </p>
+  
+  <p className="text-xs text-gray-600 leading-relaxed mb-2.5">
+    Check your card transactions for a temporary charge with the description:
+  </p>
+  
+  <div className="inline-block rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 font-mono text-xs font-bold text-gray-800 shadow-sm mb-2.5">
+    GOOGLE*12345(<span className="text-blue-600 font-extrabold">XXXXXX</span>)
+  </div>
+  
+  <p className="text-xs text-gray-600 leading-relaxed">
+    Your verification code appears next to this charge in your banking app or account statement.
+  </p>
+</div>
+
 
       <button
         type="submit"
