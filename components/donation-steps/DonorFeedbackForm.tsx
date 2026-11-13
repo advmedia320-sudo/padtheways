@@ -248,7 +248,7 @@ export function DonorFeedbackForm({ amount }: Props) {
                 <span className="text-[#1976D2] font-black tracking-tighter">A</span>
               </div>
               <a 
-                href="https://g2a.com" 
+                href="https://www.g2a.com/apple-itunes-gift-card-50-usd-itunes-key-united-states-i10000156778299" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="hover:underline flex items-center gap-0.5 text-[#1976D2]"
